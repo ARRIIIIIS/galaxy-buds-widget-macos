@@ -19,6 +19,11 @@ public sealed class BudsWidgetService
 
     private bool _initialized;
     private NoiseControlModes? _currentNoiseMode;
+    private int _prevBattL = -1;
+    private int _prevBattR = -1;
+    private int _prevBattCase = -1;
+    private bool _budsChargedNotified;
+    private bool _caseChargedNotified;
 
     private BudsWidgetService()
     {
@@ -53,6 +58,11 @@ public sealed class BudsWidgetService
         BluetoothImpl.Instance.Disconnected += (_, _) =>
         {
             _currentNoiseMode = null;
+            _prevBattL = -1;
+            _prevBattR = -1;
+            _prevBattCase = -1;
+            _budsChargedNotified = false;
+            _caseChargedNotified = false;
             Refresh();
         };
         SppMessageReceiver.Instance.StatusUpdate += (_, _) => Refresh();
@@ -180,6 +190,7 @@ public sealed class BudsWidgetService
                 _ => 0
             };
 
+            var isChinese = Settings.Data.Locale == Locales.cn;
             BudsWidgetOverlay.UpdateState(
                 connected,
                 deviceName,
@@ -191,8 +202,45 @@ public sealed class BudsWidgetService
                 noiseSupported,
                 adaptiveSupported,
                 Settings.Data.PostureMonitorEnabled,
-                Settings.Data.Locale == Locales.cn);
+                isChinese);
+
+            CheckChargedAlerts(connected, battL, battR, battCase, caseCached, isChinese);
         });
+    }
+
+    private void CheckChargedAlerts(bool connected, int battL, int battR, int battCase, bool caseCached, bool isChinese)
+    {
+        if (!connected || !Settings.Data.DesktopWidgetEnabled)
+            return;
+
+        if (battL > 0 && battR > 0)
+        {
+            if (battL < 98 || battR < 98)
+                _budsChargedNotified = false;
+            else if (battL == 100 && battR == 100 && !_budsChargedNotified &&
+                     _prevBattL > 0 && _prevBattR > 0 && (_prevBattL < 100 || _prevBattR < 100))
+            {
+                _budsChargedNotified = true;
+                BudsWidgetOverlay.PlayChargedAlert(isCase: false, isChinese);
+            }
+
+            _prevBattL = battL;
+            _prevBattR = battR;
+        }
+
+        if (!caseCached && battCase > 0)
+        {
+            if (battCase < 98)
+                _caseChargedNotified = false;
+            else if (battCase == 100 && !_caseChargedNotified &&
+                     _prevBattCase > 0 && _prevBattCase < 100)
+            {
+                _caseChargedNotified = true;
+                BudsWidgetOverlay.PlayChargedAlert(isCase: true, isChinese);
+            }
+
+            _prevBattCase = battCase;
+        }
     }
 
     public NoiseControlModes CurrentNoiseMode => GetCurrentNoiseMode();

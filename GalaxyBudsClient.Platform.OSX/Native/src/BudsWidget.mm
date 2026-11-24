@@ -335,10 +335,12 @@ static NSString *const kPrefOriginY = @"BudsWidgetOriginY";
 @property (nonatomic, copy) void (^onClose)(void);
 @property (nonatomic, copy) void (^onPostureToggle)(void);
 @property (nonatomic, copy) void (^onPostureCalibrate)(void);
+@property (nonatomic, copy) void (^onDismissCharged)(void);
 - (void)handleConnect:(id)sender;
 - (void)handleClose:(id)sender;
 - (void)handlePostureToggle:(id)sender;
 - (void)handlePostureCalibrate:(id)sender;
+- (void)handleDismissCharged:(id)sender;
 @end
 
 @implementation BudsWidgetTarget
@@ -358,6 +360,10 @@ static NSString *const kPrefOriginY = @"BudsWidgetOriginY";
 {
     if (_onPostureCalibrate) _onPostureCalibrate();
 }
+- (void)handleDismissCharged:(id)sender
+{
+    if (_onDismissCharged) _onDismissCharged();
+}
 @end
 
 static BudsWidgetPanel *gPanel = nil;
@@ -372,6 +378,8 @@ static NSTextField *gDeviceLabel = nil;
 static NSButton *gConnectButton = nil;
 static NSButton *gPostureToggleBtn = nil;
 static NSButton *gPostureCalibrateBtn = nil;
+static NSButton *gChargedToast = nil;
+static uint64_t gChargedToken = 0;
 
 static BudsBatteryInlineItem *gBattL = nil;
 static BudsBatteryInlineItem *gBattR = nil;
@@ -685,6 +693,43 @@ static void EnsurePanelCreated(void)
     gHeroLabel.textColor = [NSColor labelColor];
     [gHeroOverlay addSubview:gHeroLabel];
 
+    // Charged notification toast pill (hidden by default, click to dismiss)
+    gChargedToast = [[NSButton alloc] initWithFrame:NSMakeRect((kWidgetWidth - 198.0) / 2.0, 90.0, 198.0, 26.0)];
+    gChargedToast.bordered = NO;
+    gChargedToast.bezelStyle = NSBezelStyleInline;
+    gChargedToast.imagePosition = NSImageLeading;
+    gChargedToast.font = [NSFont systemFontOfSize:11.5 weight:NSFontWeightSemibold];
+    gChargedToast.contentTintColor = [NSColor labelColor];
+    if (@available(macOS 11.0, *)) {
+        NSImage *chgImg = [NSImage imageWithSystemSymbolName:@"battery.100.bolt" accessibilityDescription:@"Charged"];
+        if (chgImg != nil) {
+            gChargedToast.image = [chgImg imageWithSymbolConfiguration:[NSImageSymbolConfiguration configurationWithPointSize:12 weight:NSFontWeightSemibold]];
+        }
+    }
+    gChargedToast.wantsLayer = YES;
+    gChargedToast.layer.cornerRadius = 13.0;
+    if (@available(macOS 10.15, *)) {
+        gChargedToast.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    gChargedToast.layer.shadowOpacity = 0.0f;
+    gChargedToast.layer.backgroundColor = [[NSColor systemGreenColor] colorWithAlphaComponent:0.26].CGColor;
+    gChargedToast.layer.borderColor = [[NSColor systemGreenColor] colorWithAlphaComponent:0.72].CGColor;
+    gChargedToast.layer.borderWidth = 1.0;
+    gChargedToast.hidden = YES;
+    gChargedToast.alphaValue = 0.0;
+    gTarget.onDismissCharged = ^{
+        gChargedToken++;
+        [NSAnimationContext runAnimationGroup:^(NSAnimationContext *ctx) {
+            ctx.duration = 0.20;
+            gChargedToast.animator.alphaValue = 0.0;
+        } completionHandler:^{
+            gChargedToast.hidden = YES;
+        }];
+    };
+    gChargedToast.target = gTarget;
+    gChargedToast.action = @selector(handleDismissCharged:);
+    [gRootContent addSubview:gChargedToast positioned:NSWindowAbove relativeTo:gMainContentGroup];
+
     // Cursor-tracking radial caustics glow (160pt radius, fades in on hover)
     CAGradientLayer *caustics = [CAGradientLayer layer];
     caustics.type = kCAGradientLayerRadial;
@@ -834,6 +879,52 @@ void BudsWidgetPlayConnectAnimation(const char *deviceName, bool isChinese)
                 }
                 gHeroOverlay.hidden = YES;
                 gHeaderIcon.hidden = NO;
+            }];
+        });
+    });
+}
+
+void BudsWidgetPlayChargedAlert(bool isCase, bool isChinese)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        EnsurePanelCreated();
+        if (![gPanel isVisible]) {
+            return;
+        }
+
+        uint64_t token = ++gChargedToken;
+        NSString *msg;
+        if (isChinese) {
+            msg = isCase ? @"充电盒已充满 · 100%" : @"耳机已充满 · 100%";
+        } else {
+            msg = isCase ? @"Case Charged · 100%" : @"Earbuds Charged · 100%";
+        }
+
+        gChargedToast.title = msg;
+        gChargedToast.contentTintColor = [NSColor labelColor];
+        gChargedToast.layer.backgroundColor = [[NSColor systemGreenColor] colorWithAlphaComponent:0.28].CGColor;
+        gChargedToast.layer.borderColor = [[NSColor systemGreenColor] colorWithAlphaComponent:0.75].CGColor;
+        gChargedToast.alphaValue = 0.0;
+        gChargedToast.hidden = NO;
+
+        [NSAnimationContext runAnimationGroup:^(NSAnimationContext *ctx) {
+            ctx.duration = 0.24;
+            ctx.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+            gChargedToast.animator.alphaValue = 1.0;
+        }];
+
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            if (token != gChargedToken) {
+                return;
+            }
+            [NSAnimationContext runAnimationGroup:^(NSAnimationContext *ctx) {
+                ctx.duration = 0.30;
+                gChargedToast.animator.alphaValue = 0.0;
+            } completionHandler:^{
+                if (token != gChargedToken) {
+                    return;
+                }
+                gChargedToast.hidden = YES;
             }];
         });
     });

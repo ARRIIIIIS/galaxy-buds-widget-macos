@@ -122,6 +122,22 @@ internal static class BudsWidgetOverlay
         }
     }
 
+    public static void PlayChargedAlert(bool isCase, bool isChinese)
+    {
+        if (!IsAvailable || !_shown)
+            return;
+
+        try
+        {
+            BudsWidgetPlayChargedAlert(isCase, isChinese);
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException)
+        {
+            Log.Warning("BudsWidgetOverlay: charged alert failed ({Msg})", ex.Message);
+            _unavailable = true;
+        }
+    }
+
     [DllImport(Dso, CallingConvention = CallingConvention.Cdecl)]
     private static extern void BudsWidgetSetActionCallback(ActionCallback callback);
 
@@ -134,6 +150,11 @@ internal static class BudsWidgetOverlay
     [DllImport(Dso, CallingConvention = CallingConvention.Cdecl)]
     private static extern void BudsWidgetPlayConnectAnimation(
         [MarshalAs(UnmanagedType.LPUTF8Str)] string deviceName,
+        [MarshalAs(UnmanagedType.I1)] bool isChinese);
+
+    [DllImport(Dso, CallingConvention = CallingConvention.Cdecl)]
+    private static extern void BudsWidgetPlayChargedAlert(
+        [MarshalAs(UnmanagedType.I1)] bool isCase,
         [MarshalAs(UnmanagedType.I1)] bool isChinese);
 
     [DllImport(Dso, CallingConvention = CallingConvention.Cdecl)]
