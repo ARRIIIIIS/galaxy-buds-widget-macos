@@ -515,8 +515,10 @@ public sealed class WebSettingsServer
                 if (eqBands.Length != 9)
                     eqBands = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 
-                var esuEqEnabled = esu?.EqualizerEnabled ?? false;
                 var esuEqMode = esu?.EqualizerMode ?? 0;
+                var esuEqEnabled = esu != null && (BluetoothImpl.Instance.CurrentModel == Models.Buds
+                    ? esu.EqualizerEnabled
+                    : esuEqMode != 0);
                 var esuIsCustom = esuEqMode == 7 || (currentDev?.CustomEqualizerEnabled ?? false);
                 var esuPreset = Math.Clamp(esuEqMode > 0 ? esuEqMode - 1 : 0, 0, 4);
 
@@ -862,7 +864,7 @@ public sealed class WebSettingsServer
         <button id="eq4" onclick="setEqPreset(true,false,4)">高音</button>
         <button id="eqCustom" onclick="setEqPreset(true,true,0)">自定义</button>
       </div>
-      <div id="eqBandsWrap" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;text-align:center;"></div>
+      <div id="eqBandsWrap" style="display:flex;flex-direction:column;gap:6px;"></div>
     </div>
   </div>
 
@@ -1052,16 +1054,16 @@ function render() {
     cBtn.className = (state.connected && eq.enabled && eq.isCustom) ? 'active' : '';
 
     const wrap = document.getElementById('eqBandsWrap');
-    const freqs = ['63', '125', '250', '500', '1k', '2k', '4k', '8k', '16k'];
+    const freqs = ['63 Hz', '125 Hz', '250 Hz', '500 Hz', '1 kHz', '2 kHz', '4 kHz', '8 kHz', '16 kHz'];
     if (!wrap.hasChildNodes()) {
       for (let i = 0; i < 9; i++) {
-        const col = document.createElement('div');
-        col.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--field);border:1px solid var(--border);padding:8px 2px;';
-        col.innerHTML =
-          `<span id="eqv${i}" style="font-family:var(--mono);font-size:10px;color:var(--neon);">0</span>` +
-          `<input id="eqr${i}" type="range" min="-10" max="10" step="1" value="0" style="writing-mode:vertical-lr;direction:rtl;width:18px;height:90px;" oninput="document.getElementById('eqv'+${i}).textContent=(this.value>0?'+':'')+this.value" onchange="pushCustomBands()" />` +
-          `<span style="font-family:var(--mono);font-size:9.5px;color:var(--text-3);">${freqs[i]}</span>`;
-        wrap.appendChild(col);
+        const row = document.createElement('div');
+        row.style.cssText = 'display:grid;grid-template-columns:56px 1fr 44px;align-items:center;gap:10px;background:var(--field);border:1px solid var(--border);padding:6px 10px;';
+        row.innerHTML =
+          `<span style="font-family:var(--mono);font-size:10.5px;color:var(--text-2);text-align:left;">${freqs[i]}</span>` +
+          `<input id="eqr${i}" type="range" min="-10" max="10" step="1" value="0" style="width:100%;" oninput="document.getElementById('eqv'+${i}).textContent=(this.value>0?'+':'')+this.value+' dB'" onchange="pushCustomBands()" />` +
+          `<span id="eqv${i}" style="font-family:var(--mono);font-size:10.5px;color:var(--neon);text-align:right;">0 dB</span>`;
+        wrap.appendChild(row);
       }
     }
     wrap.style.opacity = (state.connected && eq.customSupported) ? '1' : '0.4';
@@ -1072,7 +1074,7 @@ function render() {
       r.disabled = !state.connected || !eq.customSupported;
       if (document.activeElement !== r) {
         r.value = g;
-        v.textContent = (g > 0 ? '+' : '') + g;
+        v.textContent = (g > 0 ? '+' : '') + g + ' dB';
       }
     }
   }
