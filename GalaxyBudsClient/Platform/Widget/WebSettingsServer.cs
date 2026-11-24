@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using GalaxyBudsClient.Message;
+using GalaxyBudsClient.Message.Encoder;
 using GalaxyBudsClient.Model;
 using GalaxyBudsClient.Model.Config;
 using GalaxyBudsClient.Model.Constants;
@@ -28,6 +29,9 @@ public sealed class WebSettingsServer
     private CancellationTokenSource? _cts;
     private int _port;
     private static bool? _optimisticSeamless;
+    private static bool? _optimisticEqEnabled;
+    private static bool? _optimisticEqCustom;
+    private static int? _optimisticEqPreset;
 
     private static readonly (string id, string label, string[] variants)[] SamsungModels =
     [
@@ -212,6 +216,9 @@ public sealed class WebSettingsServer
                                 Settings.Data.DesktopWidgetEnabled = en.GetBoolean();
                         });
                         break;
+                    case "/api/equalizer":
+                        await HandleEqualizerAsync(root);
+                        break;
                     default:
                         await WriteResponseAsync(res, 404, "application/json", "{\"error\":\"not_found\"}");
                         return;
@@ -264,6 +271,74 @@ public sealed class WebSettingsServer
         res.ContentLength64 = bytes.Length;
         await res.OutputStream.WriteAsync(bytes);
         res.Close();
+    }
+
+    private static async Task HandleEqualizerAsync(JsonElement root)
+    {
+        var enabled = root.TryGetProperty("enabled", out var en) && en.GetBoolean();
+        var isCustom = root.TryGetProperty("isCustom", out var cu) && cu.GetBoolean();
+        var preset = root.TryGetProperty("preset", out var pr) && pr.TryGetInt32(out var pv)
+            ? Math.Clamp(pv, 0, 4)
+            : 0;
+
+        int[]? bands = null;
+        if (root.TryGetProperty("bands", out var bArr) && bArr.ValueKind == JsonValueKind.Array)
+        {
+            var list = new List<int>();
+            foreach (var item in bArr.EnumerateArray())
+            {
+                if (item.TryGetInt32(out var v))
+                    list.Add(Math.Clamp(v, -10, 10));
+            }
+            if (list.Count == 9)
+                bands = [.. list];
+        }
+
+        _optimisticEqEnabled = enabled || isCustom;
+        _optimisticEqCustom = isCustom;
+        _optimisticEqPreset = preset;
+
+        if (isCustom)
+        {
+            var finalBands = bands ?? BluetoothImpl.Instance.Device.Current?.CustomEqualizerBands ?? [0, 0, 0, 0, 0, 0, 0, 0, 0];
+            if (finalBands.Length != 9)
+                finalBands = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                var dev = BluetoothImpl.Instance.Device.Current;
+                if (dev != null)
+                {
+                    dev.CustomEqualizerBands = finalBands;
+                    dev.CustomEqualizerEnabled = true;
+                }
+            });
+
+            await BluetoothImpl.Instance.SendAsync(new SetCustomEqualizerEncoder
+            {
+                BandGains = finalBands.Select(x => (sbyte)x).ToArray()
+            });
+            await BluetoothImpl.Instance.SendAsync(new SetEqualizerEncoder
+            {
+                IsEnabled = true,
+                Preset = 6
+            });
+        }
+        else
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                var dev = BluetoothImpl.Instance.Device.Current;
+                if (dev != null)
+                    dev.CustomEqualizerEnabled = false;
+            });
+
+            await BluetoothImpl.Instance.SendAsync(new SetEqualizerEncoder
+            {
+                IsEnabled = enabled,
+                Preset = preset
+            });
+        }
     }
 
     private static async Task HandleConnectAsync(JsonElement root)
@@ -433,6 +508,31 @@ public sealed class WebSettingsServer
 
                 w.WriteStartObject("widget");
                 w.WriteBoolean("enabled", Settings.Data.DesktopWidgetEnabled);
+                w.WriteEndObject();
+
+                var eqCustomSupported = BluetoothImpl.Instance.DeviceSpec.Supports(Features.CustomEqualizer);
+                var eqBands = currentDev?.CustomEqualizerBands ?? [0, 0, 0, 0, 0, 0, 0, 0, 0];
+                if (eqBands.Length != 9)
+                    eqBands = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+                var esuEqEnabled = esu?.EqualizerEnabled ?? false;
+                var esuEqMode = esu?.EqualizerMode ?? 0;
+                var esuIsCustom = esuEqMode == 7 || (currentDev?.CustomEqualizerEnabled ?? false);
+                var esuPreset = Math.Clamp(esuEqMode > 0 ? esuEqMode - 1 : 0, 0, 4);
+
+                var eqEnabled = _optimisticEqEnabled ?? esuEqEnabled;
+                var eqCustom = _optimisticEqCustom ?? esuIsCustom;
+                var eqPreset = _optimisticEqPreset ?? esuPreset;
+
+                w.WriteStartObject("equalizer");
+                w.WriteBoolean("customSupported", eqCustomSupported);
+                w.WriteBoolean("enabled", eqEnabled);
+                w.WriteBoolean("isCustom", eqCustom);
+                w.WriteNumber("preset", eqPreset);
+                w.WriteStartArray("bands");
+                foreach (var b in eqBands)
+                    w.WriteNumberValue(b);
+                w.WriteEndArray();
                 w.WriteEndObject();
 
                 w.WriteEndObject();
@@ -748,6 +848,22 @@ public sealed class WebSettingsServer
         <button class="btn" id="btnApplyMp" onclick="applyMultipoint()">立即应用</button>
       </div>
     </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span><b>02C</b> // 均衡器（EQ）</span>
+        <button class="btn" id="btnEqReset" onclick="resetCustomEq()" style="padding:4px 10px;font-size:11px;">归零</button>
+      </div>
+      <div class="seg" style="grid-template-columns:repeat(7,1fr);margin-bottom:14px;">
+        <button id="eqOff" onclick="setEqPreset(false,false,0)">关闭</button>
+        <button id="eq0" onclick="setEqPreset(true,false,0)">低音</button>
+        <button id="eq1" onclick="setEqPreset(true,false,1)">柔和</button>
+        <button id="eq2" onclick="setEqPreset(true,false,2)">动感</button>
+        <button id="eq3" onclick="setEqPreset(true,false,3)">清晰</button>
+        <button id="eq4" onclick="setEqPreset(true,false,4)">高音</button>
+        <button id="eqCustom" onclick="setEqPreset(true,true,0)">自定义</button>
+      </div>
+      <div id="eqBandsWrap" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;text-align:center;"></div>
+    </div>
   </div>
 
   <!-- Step 3 -->
@@ -816,6 +932,24 @@ function connectSelected() {
   post('/api/connect', { mac, model });
 }
 function setNoise(mode) { post('/api/noise', { mode }); }
+function setEqPreset(enabled, isCustom, preset) {
+  const bands = [];
+  for (let i = 0; i < 9; i++) {
+    const el = document.getElementById('eqr' + i);
+    bands.push(el ? +el.value : 0);
+  }
+  post('/api/equalizer', { enabled, isCustom, preset, bands });
+}
+function pushCustomBands() { setEqPreset(true, true, 0); }
+function resetCustomEq() {
+  for (let i = 0; i < 9; i++) {
+    const r = document.getElementById('eqr' + i);
+    const v = document.getElementById('eqv' + i);
+    if (r) r.value = 0;
+    if (v) v.textContent = '0';
+  }
+  pushCustomBands();
+}
 function toggleSeamless() { post('/api/seamless', { enabled: !state?.connectivity?.seamlessEnabled }); }
 function toggleAutoMp() { post('/api/multipoint', { auto: !state?.connectivity?.autoMultipoint }); }
 async function applyMultipoint() {
@@ -903,6 +1037,45 @@ function render() {
   document.getElementById('swSeamless').disabled = !state.connected || !c.seamlessSupported;
   document.getElementById('swAutoMp').className = 'switch' + (c.autoMultipoint ? ' on' : '');
   document.getElementById('btnApplyMp').disabled = !state.connected || !c.multipointSupported;
+
+  const eq = state.equalizer;
+  if (eq) {
+    document.getElementById('eqOff').className = (state.connected && !eq.enabled) ? 'active' : '';
+    document.getElementById('eqOff').disabled = !state.connected;
+    for (let i = 0; i < 5; i++) {
+      const b = document.getElementById('eq' + i);
+      b.disabled = !state.connected;
+      b.className = (state.connected && eq.enabled && !eq.isCustom && eq.preset === i) ? 'active' : '';
+    }
+    const cBtn = document.getElementById('eqCustom');
+    cBtn.disabled = !state.connected || !eq.customSupported;
+    cBtn.className = (state.connected && eq.enabled && eq.isCustom) ? 'active' : '';
+
+    const wrap = document.getElementById('eqBandsWrap');
+    const freqs = ['63', '125', '250', '500', '1k', '2k', '4k', '8k', '16k'];
+    if (!wrap.hasChildNodes()) {
+      for (let i = 0; i < 9; i++) {
+        const col = document.createElement('div');
+        col.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--field);border:1px solid var(--border);padding:8px 2px;';
+        col.innerHTML =
+          `<span id="eqv${i}" style="font-family:var(--mono);font-size:10px;color:var(--neon);">0</span>` +
+          `<input id="eqr${i}" type="range" min="-10" max="10" step="1" value="0" style="writing-mode:vertical-lr;direction:rtl;width:18px;height:90px;" oninput="document.getElementById('eqv'+${i}).textContent=(this.value>0?'+':'')+this.value" onchange="pushCustomBands()" />` +
+          `<span style="font-family:var(--mono);font-size:9.5px;color:var(--text-3);">${freqs[i]}</span>`;
+        wrap.appendChild(col);
+      }
+    }
+    wrap.style.opacity = (state.connected && eq.customSupported) ? '1' : '0.4';
+    for (let i = 0; i < 9; i++) {
+      const r = document.getElementById('eqr' + i);
+      const v = document.getElementById('eqv' + i);
+      const g = (eq.bands && eq.bands[i]) || 0;
+      r.disabled = !state.connected || !eq.customSupported;
+      if (document.activeElement !== r) {
+        r.value = g;
+        v.textContent = (g > 0 ? '+' : '') + g;
+      }
+    }
+  }
 
   const p = state.posture;
   document.getElementById('swPosture').className = 'switch' + (p.enabled ? ' on' : '');
