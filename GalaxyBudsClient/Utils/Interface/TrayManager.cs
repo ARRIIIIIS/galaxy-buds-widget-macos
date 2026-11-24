@@ -10,6 +10,8 @@ using Avalonia.Threading;
 using FluentIcons.Common;
 using GalaxyBudsClient.Generated.I18N;
 using GalaxyBudsClient.Model;
+using GalaxyBudsClient.Model.Config;
+using GalaxyBudsClient.Model.Constants;
 using GalaxyBudsClient.Model.Specifications;
 using GalaxyBudsClient.Platform;
 using GalaxyBudsClient.Platform.Widget;
@@ -35,6 +37,12 @@ internal class TrayManager
 
         if (Application.Current?.PlatformSettings is { } platformSettings)
             platformSettings.ColorValuesChanged += (_, _) => _ = RebuildAsync();
+
+        Settings.MainSettingsPropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SettingsData.Locale))
+                _ = RebuildAsync();
+        };
     }
 
     private static Bitmap? Icon(Symbol symbol) => PlatformUtils.IsOSX ? TrayMenuIcons.Glyph(symbol) : null;
@@ -92,22 +100,23 @@ internal class TrayManager
             }
             _missedUpdate = false;
 
+            var isZh = Settings.Data.Locale == Locales.cn;
             var items = new List<NativeMenuItemBase>
             {
-                new NativeMenuItem("设置向导...")
+                new NativeMenuItem(isZh ? "设置向导..." : "Settings Wizard...")
                 {
                     Icon = Icon(Symbol.Globe),
                     Command = new MiniCommand(OnTrayMenuCommand),
                     CommandParameter = TrayItemTypes.Open
                 },
                 new NativeMenuItemSeparator(),
-                new NativeMenuItem("重启")
+                new NativeMenuItem(isZh ? "重启" : "Restart")
                 {
                     Icon = Icon(Symbol.ArrowSync),
                     Command = new MiniCommand(OnTrayMenuCommand),
                     CommandParameter = TrayItemTypes.Restart
                 },
-                new NativeMenuItem(Strings.TrayQuit)
+                new NativeMenuItem(isZh ? "退出" : "Quit")
                 {
                     Icon = Icon(Symbol.Power),
                     Command = new MiniCommand(OnTrayMenuCommand),

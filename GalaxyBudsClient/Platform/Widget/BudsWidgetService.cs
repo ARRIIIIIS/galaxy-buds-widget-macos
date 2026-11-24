@@ -44,7 +44,9 @@ public sealed class BudsWidgetService
                 if (Settings.Data.DesktopWidgetEnabled)
                 {
                     var name = BluetoothImpl.Instance.Device.Current?.Name;
-                    BudsWidgetOverlay.PlayConnectAnimation(string.IsNullOrWhiteSpace(name) ? "Galaxy Buds" : name);
+                    BudsWidgetOverlay.PlayConnectAnimation(
+                        string.IsNullOrWhiteSpace(name) ? "Galaxy Buds" : name,
+                        Settings.Data.Locale == Locales.cn);
                 }
             });
         };
@@ -95,7 +97,7 @@ public sealed class BudsWidgetService
         {
             if (e.PropertyName == nameof(SettingsData.DesktopWidgetEnabled))
                 ApplyVisibilityAndState();
-            else if (e.PropertyName == nameof(SettingsData.PostureMonitorEnabled))
+            else if (e.PropertyName is nameof(SettingsData.PostureMonitorEnabled) or nameof(SettingsData.Locale))
                 Refresh();
         };
 
@@ -188,7 +190,8 @@ public sealed class BudsWidgetService
                 modeCode,
                 noiseSupported,
                 adaptiveSupported,
-                Settings.Data.PostureMonitorEnabled);
+                Settings.Data.PostureMonitorEnabled,
+                Settings.Data.Locale == Locales.cn);
         });
     }
 

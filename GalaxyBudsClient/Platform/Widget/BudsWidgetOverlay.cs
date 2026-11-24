@@ -68,14 +68,14 @@ internal static class BudsWidgetOverlay
         }
     }
 
-    public static void PlayConnectAnimation(string deviceName)
+    public static void PlayConnectAnimation(string deviceName, bool isChinese)
     {
         if (!IsAvailable || !_shown)
             return;
 
         try
         {
-            BudsWidgetPlayConnectAnimation(deviceName);
+            BudsWidgetPlayConnectAnimation(deviceName, isChinese);
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException)
         {
@@ -94,7 +94,8 @@ internal static class BudsWidgetOverlay
         int noiseMode,
         bool noiseSupported,
         bool adaptiveSupported,
-        bool postureEnabled)
+        bool postureEnabled,
+        bool isChinese)
     {
         if (!IsAvailable)
             return;
@@ -111,7 +112,8 @@ internal static class BudsWidgetOverlay
                 noiseMode,
                 noiseSupported,
                 adaptiveSupported,
-                postureEnabled);
+                postureEnabled,
+                isChinese);
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException)
         {
@@ -131,7 +133,8 @@ internal static class BudsWidgetOverlay
 
     [DllImport(Dso, CallingConvention = CallingConvention.Cdecl)]
     private static extern void BudsWidgetPlayConnectAnimation(
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string deviceName);
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string deviceName,
+        [MarshalAs(UnmanagedType.I1)] bool isChinese);
 
     [DllImport(Dso, CallingConvention = CallingConvention.Cdecl)]
     private static extern void BudsWidgetUpdateState(
@@ -144,5 +147,6 @@ internal static class BudsWidgetOverlay
         int noiseMode,
         [MarshalAs(UnmanagedType.I1)] bool noiseSupported,
         [MarshalAs(UnmanagedType.I1)] bool adaptiveSupported,
-        [MarshalAs(UnmanagedType.I1)] bool postureEnabled);
+        [MarshalAs(UnmanagedType.I1)] bool postureEnabled,
+        [MarshalAs(UnmanagedType.I1)] bool isChinese);
 }

@@ -535,7 +535,7 @@ static void EnsurePanelCreated(void)
     gDeviceLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     [gMainContentGroup addSubview:gDeviceLabel];
 
-    gConnectButton = [NSButton buttonWithTitle:@"连接" target:gTarget action:@selector(handleConnect:)];
+    gConnectButton = [NSButton buttonWithTitle:@"Connect" target:gTarget action:@selector(handleConnect:)];
     gConnectButton.frame = NSMakeRect(276, 125, 52, 22);
     gConnectButton.bezelStyle = NSBezelStyleAccessoryBarAction;
     gConnectButton.controlSize = NSControlSizeSmall;
@@ -581,7 +581,7 @@ static void EnsurePanelCreated(void)
     // Weakened Compact Battery Line (y = 88..106), aligned to header (x=18) and capsule (x=14..330)
     gBattL = [[BudsBatteryInlineItem alloc] initWithFrame:NSMakeRect(18, 88, 88, 18) prefix:@"L"];
     gBattR = [[BudsBatteryInlineItem alloc] initWithFrame:NSMakeRect(136, 88, 88, 18) prefix:@"R"];
-    gBattCase = [[BudsBatteryInlineItem alloc] initWithFrame:NSMakeRect(250, 88, 80, 18) prefix:@"盒"];
+    gBattCase = [[BudsBatteryInlineItem alloc] initWithFrame:NSMakeRect(250, 88, 80, 18) prefix:@"Case"];
     [gMainContentGroup addSubview:gBattL];
     [gMainContentGroup addSubview:gBattR];
     [gMainContentGroup addSubview:gBattCase];
@@ -762,7 +762,7 @@ void BudsWidgetHide(void)
     });
 }
 
-void BudsWidgetPlayConnectAnimation(const char *deviceName)
+void BudsWidgetPlayConnectAnimation(const char *deviceName, bool isChinese)
 {
     NSString *nameStr = deviceName != NULL ? [NSString stringWithUTF8String:deviceName] : @"Galaxy Buds";
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -779,7 +779,8 @@ void BudsWidgetPlayConnectAnimation(const char *deviceName)
         [gHeroRipple removeAllAnimations];
         gHeroIcon.frame = NSMakeRect((kWidgetWidth - 46) / 2.0, 69, 46, 46);
         gHeroIcon.alphaValue = 1.0;
-        gHeroLabel.stringValue = [NSString stringWithFormat:@"已连接 · %@", nameStr.length > 0 ? nameStr : @"Galaxy Buds"];
+        NSString *prefix = isChinese ? @"已连接" : @"Connected";
+        gHeroLabel.stringValue = [NSString stringWithFormat:@"%@ · %@", prefix, nameStr.length > 0 ? nameStr : @"Galaxy Buds"];
         gHeroLabel.alphaValue = 1.0;
         gHeroRipple.opacity = 1.0;
         gHeroOverlay.hidden = NO;
@@ -847,11 +848,21 @@ void BudsWidgetUpdateState(bool connected,
                            int32_t noiseMode,
                            bool noiseSupported,
                            bool adaptiveSupported,
-                           bool postureEnabled)
+                           bool postureEnabled,
+                           bool isChinese)
 {
     NSString *nameStr = deviceName != NULL ? [NSString stringWithUTF8String:deviceName] : @"Galaxy Buds";
     dispatch_async(dispatch_get_main_queue(), ^{
         EnsurePanelCreated();
+
+        gConnectButton.title = isChinese ? @"连接" : @"Connect";
+        gBattCase.prefix = isChinese ? @"盒" : @"Case";
+        gBtnOff.labelView.stringValue = isChinese ? @"关闭" : @"Off";
+        gBtnAdaptive.labelView.stringValue = isChinese ? @"自适应" : @"Adaptive";
+        gBtnAnc.labelView.stringValue = isChinese ? @"降噪" : @"ANC";
+        gBtnAmbient.labelView.stringValue = isChinese ? @"环境音" : @"Ambient";
+        gPostureToggleBtn.toolTip = isChinese ? @"坐姿检测开关" : @"Posture Monitor";
+        gPostureCalibrateBtn.toolTip = isChinese ? @"重置/校准坐姿基准" : @"Calibrate Posture";
 
         gDeviceLabel.stringValue = nameStr.length > 0 ? nameStr : @"Galaxy Buds";
         gStatusDot.layer.backgroundColor = (connected ? [NSColor systemGreenColor] : [NSColor tertiaryLabelColor]).CGColor;

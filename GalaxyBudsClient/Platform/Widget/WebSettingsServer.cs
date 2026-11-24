@@ -220,6 +220,16 @@ public sealed class WebSettingsServer
                     case "/api/equalizer":
                         await HandleEqualizerAsync(root);
                         break;
+                    case "/api/lang":
+                        if (root.TryGetProperty("lang", out var langProp) && langProp.ValueKind == JsonValueKind.String)
+                        {
+                            var langStr = langProp.GetString();
+                            await Dispatcher.UIThread.InvokeAsync(() =>
+                            {
+                                Settings.Data.Locale = langStr == "zh" ? Locales.cn : Locales.en;
+                            });
+                        }
+                        break;
                     default:
                         await WriteResponseAsync(res, 404, "application/json", "{\"error\":\"not_found\"}");
                         return;
@@ -451,6 +461,7 @@ public sealed class WebSettingsServer
             using (var w = new Utf8JsonWriter(ms))
             {
                 w.WriteStartObject();
+                w.WriteString("lang", Settings.Data.Locale == Locales.cn ? "zh" : "en");
                 w.WriteBoolean("connected", connected);
                 w.WriteString("deviceName", deviceName);
                 w.WriteString("mac", mac);
@@ -751,43 +762,58 @@ public sealed class WebSettingsServer
   .toast { font-family: var(--mono); font-size: 11px; color: var(--neon); }
   .step-pane { display: none; }
   .step-pane.active { display: block; }
+  .lang-switch {
+    position: fixed; top: 16px; right: 20px; z-index: 20;
+    display: flex; gap: 2px; background: var(--surface-solid);
+    border: 1px solid var(--border); padding: 3px;
+  }
+  .lang-btn {
+    appearance: none; border: none; cursor: pointer;
+    font-size: 10.5px; font-weight: 700; font-family: var(--mono);
+    padding: 4px 8px; color: var(--text-3); background: transparent;
+  }
+  .lang-btn.active { background: var(--neon); color: var(--cta-fg); }
   @media (max-width: 600px) { .hero { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
+<div class="lang-switch">
+  <button class="lang-btn active" id="langEn" onclick="setLang('en')">EN</button>
+  <button class="lang-btn" id="langZh" onclick="setLang('zh')">中文</button>
+</div>
 <div class="bg-glow"></div>
 <div class="container">
   <div class="header">
     <div class="hero-badge"><span class="pulse-dot"></span> GALAXY BUDS WIDGET · SETUP</div>
-    <h1>GALAXY BUDS 设置向导</h1>
-    <p>三星耳机桌面液态玻璃小组件 · 本地配置中心</p>
+    <h1 data-i18n="title">GALAXY BUDS SETUP WIZARD</h1>
+    <p data-i18n="sub">macOS Liquid Glass Desktop Widget · Local Control Center</p>
     <div class="hud-strip">
-      <span class="hud-item">状态 <b id="hudConn">OFFLINE</b></span>
+      <span class="hud-item"><span data-i18n="hudStatus">STATUS</span> <b id="hudConn">OFFLINE</b></span>
       <span class="hud-sep"></span>
-      <span class="hud-item">左耳 <b id="hudL">--</b></span>
+      <span class="hud-item"><span data-i18n="hudL">L</span> <b id="hudL">--</b></span>
       <span class="hud-sep"></span>
-      <span class="hud-item">右耳 <b id="hudR">--</b></span>
+      <span class="hud-item"><span data-i18n="hudR">R</span> <b id="hudR">--</b></span>
       <span class="hud-sep"></span>
-      <span class="hud-item">盒 <b id="hudC">--</b></span>
+      <span class="hud-item"><span data-i18n="hudC">CASE</span> <b id="hudC">--</b></span>
     </div>
   </div>
 
   <div class="stepper">
     <div class="step-node active" onclick="goStep(1)" id="st1">
-      <span class="step-num">01</span><span class="step-label">设备与渲染</span>
+      <span class="step-num">01</span><span class="step-label" data-i18n="step1">Device & Render</span>
     </div>
     <div class="step-node" onclick="goStep(2)" id="st2">
-      <span class="step-num">02</span><span class="step-label">降噪与互联</span>
+      <span class="step-num">02</span><span class="step-label" data-i18n="step2">ANC, Link & EQ</span>
     </div>
     <div class="step-node" onclick="goStep(3)" id="st3">
-      <span class="step-num">03</span><span class="step-label">坐姿与小组件</span>
+      <span class="step-num">03</span><span class="step-label" data-i18n="step3">Posture & Widget</span>
     </div>
   </div>
 
   <!-- Step 1 -->
   <div class="step-pane active" id="pane1">
     <div class="panel">
-      <div class="panel-head"><span><b>01</b> // 三星设备选择与实物预览</span><span id="connName">--</span></div>
+      <div class="panel-head"><span data-i18n="p1Head"><b>01</b> // Samsung Device & Preview</span><span id="connName">--</span></div>
       <div class="hero">
         <div class="render-stage">
           <img id="imgL" src="/api/render?variant=Buds3ProSilver&side=0" alt="Left" />
@@ -809,8 +835,8 @@ public sealed class WebSettingsServer
             <select id="devSelect"></select>
           </div>
           <div class="actions-row">
-            <button class="btn btn-cta" id="btnConn" onclick="connectSelected()">连接耳机</button>
-            <button class="btn" id="btnDisc" onclick="post('/api/disconnect')">断开连接</button>
+            <button class="btn btn-cta" id="btnConn" data-i18n="btnConn" onclick="connectSelected()">Connect</button>
+            <button class="btn" id="btnDisc" data-i18n="btnDisc" onclick="post('/api/disconnect')">Disconnect</button>
           </div>
         </div>
       </div>
@@ -820,51 +846,51 @@ public sealed class WebSettingsServer
   <!-- Step 2 -->
   <div class="step-pane" id="pane2">
     <div class="panel">
-      <div class="panel-head"><span><b>02A</b> // 主动降噪控制（4 模式）</span></div>
+      <div class="panel-head"><span data-i18n="p2aHead"><b>02A</b> // Noise Control (4 Modes)</span></div>
       <div class="seg">
-        <button id="m0" onclick="setNoise(0)">关闭</button>
-        <button id="m3" onclick="setNoise(3)">自适应</button>
-        <button id="m2" onclick="setNoise(2)">降噪</button>
-        <button id="m1" onclick="setNoise(1)">环境音</button>
+        <button id="m0" data-i18n="m0" onclick="setNoise(0)">Off</button>
+        <button id="m3" data-i18n="m3" onclick="setNoise(3)">Adaptive</button>
+        <button id="m2" data-i18n="m2" onclick="setNoise(2)">ANC</button>
+        <button id="m1" data-i18n="m1" onclick="setNoise(1)">Ambient</button>
       </div>
     </div>
     <div class="panel">
-      <div class="panel-head"><span><b>02B</b> // 无缝切换与双设备互联</span><span class="toast" id="mpToast"></span></div>
+      <div class="panel-head"><span data-i18n="p2bHead"><b>02B</b> // Seamless & Multipoint</span><span class="toast" id="mpToast"></span></div>
       <div class="row">
         <div>
-          <div class="row-title">无缝耳机连接（Seamless Connection）</div>
-          <div class="row-desc">允许其他三星设备直接接管耳机音频，无需手动断开</div>
+          <div class="row-title" data-i18n="seamTitle">Seamless Earbud Connection</div>
+          <div class="row-desc" data-i18n="seamDesc">Allow other Samsung devices to take over audio without disconnecting</div>
         </div>
         <button class="switch" id="swSeamless" onclick="toggleSeamless()"></button>
       </div>
       <div class="row">
         <div>
-          <div class="row-title">连接时自动解锁双设备互联（Multipoint）</div>
-          <div class="row-desc">自动写入 MDE 标记，支持电脑与手机同时在线</div>
+          <div class="row-title" data-i18n="autoMpTitle">Auto-Unlock Multipoint on Connect</div>
+          <div class="row-desc" data-i18n="autoMpDesc">Automatically write MDE flag to stay connected to Mac & phone</div>
         </div>
         <button class="switch" id="swAutoMp" onclick="toggleAutoMp()"></button>
       </div>
       <div class="row">
         <div>
-          <div class="row-title">手动立即应用多点解锁</div>
-          <div class="row-desc">写入后耳机会短暂重连一次</div>
+          <div class="row-title" data-i18n="applyMpTitle">Apply Multipoint Unlock Now</div>
+          <div class="row-desc" data-i18n="applyMpDesc">Earbuds will briefly reconnect after writing</div>
         </div>
-        <button class="btn" id="btnApplyMp" onclick="applyMultipoint()">立即应用</button>
+        <button class="btn" id="btnApplyMp" data-i18n="btnApply" onclick="applyMultipoint()">Apply</button>
       </div>
     </div>
     <div class="panel">
       <div class="panel-head">
-        <span><b>02C</b> // 均衡器（EQ）</span>
-        <button class="btn" id="btnEqReset" onclick="resetCustomEq()" style="padding:4px 10px;font-size:11px;">归零</button>
+        <span data-i18n="p2cHead"><b>02C</b> // Equalizer (EQ)</span>
+        <button class="btn" id="btnEqReset" data-i18n="btnReset" onclick="resetCustomEq()" style="padding:4px 10px;font-size:11px;">Reset</button>
       </div>
       <div class="seg" style="grid-template-columns:repeat(7,1fr);margin-bottom:14px;">
-        <button id="eqOff" onclick="setEqPreset(false,false,0)">关闭</button>
-        <button id="eq0" onclick="setEqPreset(true,false,0)">低音</button>
-        <button id="eq1" onclick="setEqPreset(true,false,1)">柔和</button>
-        <button id="eq2" onclick="setEqPreset(true,false,2)">动感</button>
-        <button id="eq3" onclick="setEqPreset(true,false,3)">清晰</button>
-        <button id="eq4" onclick="setEqPreset(true,false,4)">高音</button>
-        <button id="eqCustom" onclick="setEqPreset(true,true,0)">自定义</button>
+        <button id="eqOff" data-i18n="eqOff" onclick="setEqPreset(false,false,0)">Off</button>
+        <button id="eq0" data-i18n="eq0" onclick="setEqPreset(true,false,0)">Bass</button>
+        <button id="eq1" data-i18n="eq1" onclick="setEqPreset(true,false,1)">Soft</button>
+        <button id="eq2" data-i18n="eq2" onclick="setEqPreset(true,false,2)">Dynamic</button>
+        <button id="eq3" data-i18n="eq3" onclick="setEqPreset(true,false,3)">Clear</button>
+        <button id="eq4" data-i18n="eq4" onclick="setEqPreset(true,false,4)">Treble</button>
+        <button id="eqCustom" data-i18n="eqCustom" onclick="setEqPreset(true,true,0)">Custom</button>
       </div>
       <div id="eqBandsWrap" style="position:relative;background:var(--field);border:1px solid var(--border);padding:12px 10px 8px;user-select:none;touch-action:none;">
         <svg id="eqSvg" viewBox="0 0 900 140" preserveAspectRatio="none" style="position:absolute;left:10px;right:10px;top:28px;width:calc(100% - 20px);height:140px;pointer-events:none;z-index:1;">
@@ -888,32 +914,32 @@ public sealed class WebSettingsServer
   <!-- Step 3 -->
   <div class="step-pane" id="pane3">
     <div class="panel">
-      <div class="panel-head"><span><b>03A</b> // 坐姿检测调校</span><span class="toast" id="postureStat">PITCH --</span></div>
+      <div class="panel-head"><span data-i18n="p3aHead"><b>03A</b> // Posture Monitor</span><span class="toast" id="postureStat">PITCH --</span></div>
       <div class="row">
         <div>
-          <div class="row-title">启用低头全屏模糊提醒</div>
-          <div class="row-desc">也可直接在桌面小组件右上角一键开关与校准</div>
+          <div class="row-title" data-i18n="posTitle">Enable Neck-Posture Screen Blur</div>
+          <div class="row-desc" data-i18n="posDesc">Also toggleable & calibratable from the widget top-right</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <button class="btn" onclick="post('/api/posture', { calibrate: true })">坐直校准</button>
+          <button class="btn" data-i18n="btnCal" onclick="post('/api/posture', { calibrate: true })">Calibrate</button>
           <button class="switch" id="swPosture" onclick="togglePosture()"></button>
         </div>
       </div>
       <div class="row">
-        <span class="row-title">触发角度：<strong id="valAngle" style="color:var(--neon)">9°</strong></span>
+        <span class="row-title"><span data-i18n="lblAngle">Trigger Angle:</span> <strong id="valAngle" style="color:var(--neon)">9°</strong></span>
         <input type="range" id="rngAngle" min="2" max="30" value="9" oninput="valAngle.textContent=this.value+'°'" onchange="post('/api/posture', { triggerAngle: +this.value })" />
       </div>
       <div class="row">
-        <span class="row-title">模糊强度：<strong id="valBlur" style="color:var(--neon)">50</strong></span>
+        <span class="row-title"><span data-i18n="lblBlur">Blur Intensity:</span> <strong id="valBlur" style="color:var(--neon)">50</strong></span>
         <input type="range" id="rngBlur" min="0" max="100" value="50" oninput="valBlur.textContent=this.value" onchange="post('/api/posture', { blurIntensity: +this.value })" />
       </div>
     </div>
     <div class="panel">
-      <div class="panel-head"><span><b>03B</b> // 桌面小组件</span></div>
+      <div class="panel-head"><span data-i18n="p3bHead"><b>03B</b> // Desktop Widget</span></div>
       <div class="row">
         <div>
-          <div class="row-title">常驻显示液态玻璃桌面小组件</div>
-          <div class="row-desc">344×162 桌面底层小组件，长按顶部区域 0.25s 可拖动位置</div>
+          <div class="row-title" data-i18n="widTitle">Show Liquid Glass Desktop Widget</div>
+          <div class="row-desc" data-i18n="widDesc">344×162 desktop-level widget; hold top bar 0.25s to drag</div>
         </div>
         <button class="switch" id="swWidget" onclick="toggleWidget()"></button>
       </div>
@@ -924,6 +950,129 @@ public sealed class WebSettingsServer
 <script>
 let state = null;
 let initializedModels = false;
+let currentLang = 'en';
+
+const I18N = {
+  en: {
+    title: 'GALAXY BUDS // WORKBENCH',
+    sub: 'macOS DESKTOP WIDGET · NOISE CONTROL · EQUALIZER · POSTURE',
+    hudStatus: 'STATUS',
+    hudL: 'L BUD',
+    hudR: 'R BUD',
+    hudC: 'CASE',
+    step1: 'Bluetooth & Model',
+    step2: 'Audio & Multipoint',
+    step3: 'Posture & Widget',
+    p1Head: '<b>01</b> // BLUETOOTH LINK &amp; MODEL',
+    btnConn: 'CONNECT',
+    btnDisc: 'DISCONNECT',
+    p2aHead: '<b>02</b> // ACTIVE NOISE CONTROL',
+    m0: 'Off',
+    m3: 'Adaptive',
+    m2: 'ANC',
+    m1: 'Ambient',
+    p2bHead: '<b>02</b> // SEAMLESS CONNECTION &amp; MULTIPOINT',
+    seamTitle: 'Seamless Earbud Connection',
+    seamDesc: 'Allow switching between paired devices without disconnecting first',
+    autoMpTitle: 'Auto Multipoint on Connect',
+    autoMpDesc: 'Automatically restore Seamless Connection after Buds connect',
+    applyMpTitle: 'Write Multipoint Config Now',
+    applyMpDesc: 'Push Seamless + Multipoint state to earbuds immediately',
+    btnApply: 'APPLY NOW',
+    p2cHead: '<b>02</b> // EQUALIZER (SAMSUNG PRESETS &amp; 9-BAND)',
+    btnReset: 'RESET 0dB',
+    eqOff: 'Off',
+    eq0: 'Bass Boost',
+    eq1: 'Soft',
+    eq2: 'Dynamic',
+    eq3: 'Clear',
+    eq4: 'Treble Boost',
+    eqCustom: 'Custom',
+    p3aHead: '<b>03</b> // NECK POSTURE MONITOR',
+    posTitle: 'Enable Neck Posture Monitor',
+    posDesc: 'Monitor head pitch via earbud IMU and blur screen on slouch',
+    btnCal: 'CALIBRATE',
+    lblAngle: 'Trigger Angle',
+    lblBlur: 'Blur Intensity',
+    p3bHead: '<b>03</b> // DESKTOP WIDGET OVERLAY',
+    widTitle: 'Show Desktop Liquid Glass Widget',
+    widDesc: 'Floating desktop battery and noise control widget',
+    connOnline: 'CONNECTED',
+    connOffline: 'OFFLINE',
+    notConnected: 'Disconnected',
+    noPaired: 'No paired Bluetooth devices found'
+  },
+  zh: {
+    title: 'GALAXY BUDS // 工作台',
+    sub: 'macOS 桌面组件 · 降噪 · 均衡器 · 坐姿检测',
+    hudStatus: '连接状态',
+    hudL: '左耳',
+    hudR: '右耳',
+    hudC: '充电盒',
+    step1: '蓝牙与型号',
+    step2: '音频与双设备',
+    step3: '坐姿与组件',
+    p1Head: '<b>01</b> // 蓝牙连接与型号选择',
+    btnConn: '连接',
+    btnDisc: '断开',
+    p2aHead: '<b>02</b> // 主动降噪控制',
+    m0: '关闭',
+    m3: '自适应',
+    m2: '降噪',
+    m1: '环境音',
+    p2bHead: '<b>02</b> // 无缝切换与双设备',
+    seamTitle: '无缝耳机连接 (Seamless Connection)',
+    seamDesc: '允许在已配对设备间不先断开即可切换连接',
+    autoMpTitle: '连接后自动启用双设备协同',
+    autoMpDesc: '耳机连接成功后自动写入并恢复无缝连接状态',
+    applyMpTitle: '立即写入当前双设备配置',
+    applyMpDesc: '立刻向耳机下发 Seamless + Multipoint 状态',
+    btnApply: '立即写入',
+    p2cHead: '<b>02</b> // 均衡器 (三星预设与 9 段自定义)',
+    btnReset: '归零',
+    eqOff: '关闭',
+    eq0: '低音增强',
+    eq1: '柔和',
+    eq2: '动感',
+    eq3: '清晰',
+    eq4: '高音增强',
+    eqCustom: '自定义',
+    p3aHead: '<b>03</b> // 坐姿护颈监测',
+    posTitle: '开启坐姿低头监测',
+    posDesc: '通过耳机 IMU 传感器实时监测低头角度并在低头时模糊屏幕提醒',
+    btnCal: '一键校准',
+    lblAngle: '低头触发阈值',
+    lblBlur: '模糊提醒强度',
+    p3bHead: '<b>03</b> // 桌面悬浮组件',
+    widTitle: '显示桌面 Liquid Glass 组件',
+    widDesc: '桌面电量与降噪快捷控制悬浮窗',
+    connOnline: '已连接',
+    connOffline: '未连接',
+    notConnected: '未连接',
+    noPaired: '未检测到已配对蓝牙设备'
+  }
+};
+
+const HTML_KEYS = new Set(['p1Head', 'p2aHead', 'p2bHead', 'p2cHead', 'p3aHead', 'p3bHead']);
+
+function applyLang(lang) {
+  currentLang = (lang === 'zh') ? 'zh' : 'en';
+  const dict = I18N[currentLang];
+  document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
+  document.getElementById('langEn').classList.toggle('active', currentLang === 'en');
+  document.getElementById('langZh').classList.toggle('active', currentLang === 'zh');
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (!(key in dict)) return;
+    if (HTML_KEYS.has(key)) el.innerHTML = dict[key];
+    else el.textContent = dict[key];
+  });
+}
+
+function setLang(lang) {
+  applyLang(lang);
+  post('/api/lang', { lang });
+}
 
 function goStep(n) {
   for (let i = 1; i <= 3; i++) {
@@ -1042,8 +1191,10 @@ function updatePreview() {
 
 function render() {
   if (!state) return;
-  document.getElementById('hudConn').textContent = state.connected ? 'CONNECTED' : 'OFFLINE';
-  document.getElementById('connName').textContent = state.connected ? state.deviceName : '未连接';
+  applyLang(state.lang || 'en');
+  const dict = I18N[currentLang];
+  document.getElementById('hudConn').textContent = state.connected ? dict.connOnline : dict.connOffline;
+  document.getElementById('connName').textContent = state.connected ? state.deviceName : dict.notConnected;
   document.getElementById('btnConn').disabled = state.connected;
   document.getElementById('btnDisc').disabled = !state.connected;
 
@@ -1072,7 +1223,7 @@ function render() {
   if ((state.pairedDevices || []).length === 0) {
     const opt = document.createElement('option');
     opt.value = '';
-    opt.textContent = '未检测到已配对蓝牙设备';
+    opt.textContent = dict.noPaired;
     sel.appendChild(opt);
   } else {
     for (const d of state.pairedDevices) {
