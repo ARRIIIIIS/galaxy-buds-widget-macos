@@ -44,6 +44,9 @@ public sealed class BudsWidgetService
         {
             _currentNoiseMode = null;
             Refresh();
+            if (MultipointPatcher.ShouldSuppressConnectAnimation)
+                return;
+
             Dispatcher.UIThread.Post(() =>
             {
                 if (Settings.Data.DesktopWidgetEnabled)
@@ -57,6 +60,9 @@ public sealed class BudsWidgetService
         };
         BluetoothImpl.Instance.Disconnected += (_, _) =>
         {
+            if (MultipointPatcher.IsPatching)
+                return;
+
             _currentNoiseMode = null;
             _prevBattL = -1;
             _prevBattR = -1;
@@ -147,6 +153,9 @@ public sealed class BudsWidgetService
         Dispatcher.UIThread.Post(() =>
         {
             var connected = BluetoothImpl.Instance.IsConnected;
+            if (!connected && MultipointPatcher.IsPatching)
+                return;
+
             var deviceName = BluetoothImpl.Instance.Device.Current?.Name;
             if (string.IsNullOrWhiteSpace(deviceName))
                 deviceName = "Galaxy Buds";

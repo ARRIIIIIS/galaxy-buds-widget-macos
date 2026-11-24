@@ -86,6 +86,19 @@ public static class MultipointPatcher
     private const int SelfReconnectSuppressMs = 15000;
 
     private static DateTime _suppressUntil = DateTime.MinValue;
+    private static DateTime _suppressConnectAnimUntil = DateTime.MinValue;
+
+    /// <summary>
+    /// True while an active connection is temporarily torn down to write MDE_VERSION and restored.
+    /// </summary>
+    public static volatile bool IsPatching;
+
+    /// <summary>
+    /// True during internal multipoint patching and briefly after restore so the desktop widget
+    /// does not replay the connect animation.
+    /// </summary>
+    public static bool ShouldSuppressConnectAnimation =>
+        IsPatching || DateTime.UtcNow < _suppressConnectAnimUntil;
 
     /// <summary>
     /// The SMEP channel is only exposed by models that also support renaming, which is the same
@@ -162,6 +175,8 @@ public static class MultipointPatcher
     {
         var bt = BluetoothImpl.Instance;
         var wasConnected = bt.IsConnected;
+        if (wasConnected)
+            IsPatching = true;
 
         try
         {
@@ -217,6 +232,8 @@ public static class MultipointPatcher
         finally
         {
             await RestoreAsync(wasConnected);
+            IsPatching = false;
+            Widget.BudsWidgetService.Instance.Refresh();
         }
     }
 
@@ -337,6 +354,7 @@ public static class MultipointPatcher
             if (reconnect)
             {
                 _suppressUntil = DateTime.UtcNow.AddMilliseconds(SelfReconnectSuppressMs);
+                _suppressConnectAnimUntil = DateTime.UtcNow.AddSeconds(3);
                 await bt.ConnectAsync();
             }
         }
