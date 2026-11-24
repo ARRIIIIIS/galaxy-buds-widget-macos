@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>NSBluetoothAlwaysUsageDescription</key>
+        <string>Galaxy Buds Manager uses Bluetooth to access Galaxy Buds devices</string>
+        <key>NSMicrophoneUsageDescription</key>
+        <string>Galaxy Buds Manager captures system audio from the BlackHole virtual device to apply 360 spatial audio</string>
+        <key>CFBundleName</key>
+        <string>Galaxy Buds Manager</string>
+        <key>CFBundleDisplayName</key>
+        <string>Galaxy Buds Manager</string>
+        <key>CFBundleIconFile</key>
+        <string>AppIcon.icns</string>
+        <key>LSUIElement</key>
+        <true/>
+    </dict>
+</plist>

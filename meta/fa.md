@@ -1,0 +1,119 @@
+# fa (undefined)
+
+This file is auto-generated and automatically updated. Do not modify this file manually.
+
+<table>
+<tr><th>Progress</th><th>Count</th></tr>
+<tr><td>85%</td><td>89 missing string(s)</td></tr>
+</table>
+
+### Missing strings
+
+<table>
+<tr><th>Key</th><th>Original string</th></tr>
+<tr><td><code>read_failed</code></td><td>Failed to read file. Access denied.</td></tr>
+<tr><td><code>feature_unsupported_platform</code></td><td>This feature is currently not supported on this platform.</td></tr>
+<tr><td><code>adaptive</code></td><td>Adaptive</td></tr>
+<tr><td><code>welcome_android_hint_title</code></td><td>Important information for Android users</td></tr>
+<tr><td><code>welcome_android_hint</code></td><td>This app was initially designed for use on desktop computers. Features that need this app to run in the background, such as custom touch actions and battery statistics, are currently unavailable in this version.
+If the official Samsung Wearable app is active alongside this app, connection issues may occur. Please make sure to close the official app properly before using this app.</td></tr>
+<tr><td><code>system_hidden_at_mode</code></td><td>Hidden system settings</td></tr>
+<tr><td><code>system_hidden_at_mode_desc</code></td><td>Edit hidden settings such as serial numbers and UART state</td></tr>
+<tr><td><code>hidden_mode_warning</code></td><td>Proceed with caution</td></tr>
+<tr><td><code>hidden_mode_warning_desc</code></td><td>Some changes made on this page cannot be restored by a factory reset. Not all models support these settings.</td></tr>
+<tr><td><code>hidden_mode_target</code></td><td>Target device: {0} earbud</td></tr>
+<tr><td><code>hidden_mode_target_l_desc</code></td><td>To modify your left earbud, put the right earbud into the case and close it.</td></tr>
+<tr><td><code>hidden_mode_target_r_desc</code></td><td>To modify your right earbud, put the left earbud into the case and close it.</td></tr>
+<tr><td><code>hidden_mode_input_wrong_length</code></td><td>The new value must be exactly {0} characters long.</td></tr>
+<tr><td><code>hidden_mode_uart_on_confirm</code></td><td>UART has been successfully enabled</td></tr>
+<tr><td><code>hidden_mode_uart_off_confirm</code></td><td>UART has been successfully disabled</td></tr>
+<tr><td><code>hidden_mode_uart</code></td><td>Enable UART port</td></tr>
+<tr><td><code>hidden_mode_uart_desc</code></td><td>Temporarily enables the physical UART port on the PCB of the current target device for debugging purposes</td></tr>
+<tr><td><code>hidden_mode_power</code></td><td>Power menu</td></tr>
+<tr><td><code>hidden_mode_power_desc</code></td><td>Shutdown, reboot or put the current target device to sleep</td></tr>
+<tr><td><code>hidden_mode_serial_change</code></td><td>Change serial number</td></tr>
+<tr><td><code>hidden_mode_serial_change_desc</code></td><td>Changes the serial number of the current target device</td></tr>
+<tr><td><code>hidden_mode_did_change</code></td><td>Change DID number & color</td></tr>
+<tr><td><code>hidden_mode_did_change_desc</code></td><td>Changes the device model id of the current target device</td></tr>
+<tr><td><code>hidden_mode_sku_change</code></td><td>Change SKU code</td></tr>
+<tr><td><code>hidden_mode_sku_change_desc</code></td><td>Changes the product code of the current target device</td></tr>
+<tr><td><code>hidden_mode_bt_peer_addr_change</code></td><td>Change peer Bluetooth address</td></tr>
+<tr><td><code>hidden_mode_bt_peer_change_desc</code></td><td>Changes the peer Bluetooth address of the current target device</td></tr>
+<tr><td><code>hidden_mode_bt_local_addr_change</code></td><td>Change local Bluetooth address</td></tr>
+<tr><td><code>hidden_mode_bt_local_change_desc</code></td><td>Changes the local Bluetooth address of the current target device</td></tr>
+<tr><td><code>hidden_mode_terminal</code></td><td>Hidden command terminal</td></tr>
+<tr><td><code>hidden_mode_terminal_desc</code></td><td>Send custom AT commands to the current target device</td></tr>
+<tr><td><code>power_menu_hint</code></td><td>Only the current target earbud will be affected.</td></tr>
+<tr><td><code>power_menu_reboot</code></td><td>Reboot</td></tr>
+<tr><td><code>power_menu_shutdown</code></td><td>Shutdown</td></tr>
+<tr><td><code>power_menu_sleep</code></td><td>Factory sleep mode</td></tr>
+<tr><td><code>at_terminal_cmd_id</code></td><td>Command id</td></tr>
+<tr><td><code>at_terminal_cmd_param</code></td><td>Command parameter (optional)</td></tr>
+<tr><td><code>at_terminal_cmd_id_invalid</code></td><td>This command id is invalid. Please enter a 16-bit hexadecimal value, such as 0007 or 004C.</td></tr>
+<tr><td><code>at_terminal_output</code></td><td>Output</td></tr>
+<tr><td><code>at_terminal_send</code></td><td>Send</td></tr>
+<tr><td><code>settings_color_override</code></td><td>Earbud color override</td></tr>
+<tr><td><code>settings_color_override_description</code></td><td>Change the displayed color of your earbuds in the app</td></tr>
+<tr><td><code>settings_nav_sidebar</code></td><td>Navigation sidebar</td></tr>
+<tr><td><code>settings_nav_sidebar_description</code></td><td>Show or collapse the navigation buttons on the left hand side</td></tr>
+<tr><td><code>settings_multipoint_header</code></td><td>Multipoint</td></tr>
+<tr><td><code>settings_multipoint_auto</code></td><td>Unlock multipoint without a Samsung account</td></tr>
+<tr><td><code>settings_multipoint_auto_description</code></td><td>Your earbuds normally drop your phone as soon as a non-Samsung device connects, unless the Galaxy Wearable app is signed in. Enabling this writes the missing version marker to your earbuds every time they connect, which lets both devices stay connected. The earbuds keep the marker only until they power down, so putting them back in the case clears it.</td></tr>
+<tr><td><code>settings_multipoint_apply</code></td><td>Apply now</td></tr>
+<tr><td><code>settings_multipoint_apply_description</code></td><td>Write the marker again. Your earbuds will briefly disconnect and reconnect.</td></tr>
+<tr><td><code>settings_multipoint_applied</code></td><td>Multipoint unlocked. Connect your phone to test it.</td></tr>
+<tr><td><code>settings_multipoint_failed</code></td><td>Could not unlock multipoint. Make sure your earbuds are connected and try again.</td></tr>
+<tr><td><code>adv_pause_playback</code></td><td>Pause playback if earbuds are taken off</td></tr>
+<tr><td><code>adv_pause_playback_desc</code></td><td>Sends a global play/pause state change event when both of the proximity sensors are uncovered (Desktop only)</td></tr>
+<tr><td><code>connlost_troubleshoot</code></td><td>Troubleshoot</td></tr>
+<tr><td><code>connlost_troubleshoot_title</code></td><td>How to troubleshoot connection issues</td></tr>
+<tr><td><code>connlost_troubleshoot_content</code></td><td>Please make sure that Samsung's official Wearable app for the Galaxy Buds does not attempt to connect to your earbuds in the background.
+Otherwise, you will experience very frequent connection loss issues as their app will repeatedly attempt to gain control over the earbuds.
+
+You can choose one of these solutions to fix this issue:
+
+• Unpair the earbuds from the Wearable app. (In the Wearable app, open the hamburger menu, select 'Manage devices', and delete your earbuds from the list.)
+
+• Uninstall the Galaxy Buds plugin for the Samsung Wearable app althogether.
+
+• Use an app like 'Hail' or 'Ice Box' to temporarily freeze the official Galaxy Buds plugin for the Samsung Wearable app to prevent it from running.
+    </td></tr>
+<tr><td><code>rename_warn_oneui_title</code></td><td>Important information for OneUI users</td></tr>
+<tr><td><code>rename_warn_oneui</code></td><td>If your device is running Samsung OneUI, you should use Samsung's official method to rename your earbuds in the system settings. Otherwise, there will be connection issues while setting a new name.</td></tr>
+<tr><td><code>page_spatial_audio</code></td><td>360 Audio</td></tr>
+<tr><td><code>spatial_audio_desc</code></td><td>Dynamic head tracking and 360 spatial sound</td></tr>
+<tr><td><code>spatial_enable</code></td><td>Enable Head Tracking</td></tr>
+<tr><td><code>spatial_enable_desc</code></td><td>Activates internal motion sensors to track head orientation</td></tr>
+<tr><td><code>spatial_recenter</code></td><td>Recenter Heading</td></tr>
+<tr><td><code>spatial_recenter_desc</code></td><td>Resets front orientation to where you are currently looking</td></tr>
+<tr><td><code>spatial_demo_play</code></td><td>Play 360 Audio Demo</td></tr>
+<tr><td><code>spatial_demo_stop</code></td><td>Stop 360 Audio Demo</td></tr>
+<tr><td><code>spatial_demo_desc</code></td><td>Plays an interactive spatial chime that moves in 3D around you as you turn your head</td></tr>
+<tr><td><code>spatial_broadcast_osc</code></td><td>Broadcast via OSC (DAWs / Plugins)</td></tr>
+<tr><td><code>spatial_broadcast_osc_desc</code></td><td>Sends real-time yaw, pitch, roll and quaternion to localhost:9000</td></tr>
+<tr><td><code>spatial_broadcast_opentrack</code></td><td>Broadcast to Games (OpenTrack)</td></tr>
+<tr><td><code>spatial_broadcast_opentrack_desc</code></td><td>Sends FreeTrack / OpenTrack UDP packets to localhost:4242 for flight/driving sims</td></tr>
+<tr><td><code>spatial_tracking_active</code></td><td>Tracking active</td></tr>
+<tr><td><code>spatial_tracking_inactive</code></td><td>Tracking stopped</td></tr>
+<tr><td><code>spatial_speaker_angle</code></td><td>Virtual Soundstage Width</td></tr>
+<tr><td><code>spatial_speaker_angle_desc</code></td><td>Adjusts the stereo angle of the virtual front speakers</td></tr>
+<tr><td><code>spatial_ambience</code></td><td>Room Ambience</td></tr>
+<tr><td><code>spatial_ambience_desc</code></td><td>Simulates studio acoustic reflections to externalize sound</td></tr>
+<tr><td><code>spatial_system_audio</code></td><td>System-Wide 360 Audio</td></tr>
+<tr><td><code>spatial_system_audio_desc</code></td><td>Applies 360 head tracking to all system sound (Spotify, YouTube, movies, games)</td></tr>
+<tr><td><code>spatial_blackhole_status_ok</code></td><td>BlackHole 2ch virtual driver ready</td></tr>
+<tr><td><code>spatial_blackhole_status_restart_needed</code></td><td>BlackHole installed, please restart CoreAudio to activate</td></tr>
+<tr><td><code>spatial_blackhole_status_missing</code></td><td>BlackHole 2ch required on macOS</td></tr>
+<tr><td><code>spatial_blackhole_missing_desc</code></td><td>To capture macOS system audio for 360 spatialization, the free open-source BlackHole 2ch driver is required.</td></tr>
+<tr><td><code>spatial_blackhole_howto</code></td><td>How to use: Select 'BlackHole 2ch' as your macOS Sound Output, then turn on the switch above to hear everything in 360.</td></tr>
+<tr><td><code>spatial_blackhole_install</code></td><td>Install BlackHole (Homebrew)</td></tr>
+<tr><td><code>spatial_blackhole_restart</code></td><td>Restart CoreAudio (Activate Driver)</td></tr>
+<tr><td><code>spatial_open_audio_midi</code></td><td>Open Audio MIDI Setup</td></tr>
+<tr><td><code>spatial_open_sound_pref</code></td><td>Open Sound Settings</td></tr>
+<tr><td><code>spatial_windows_info</code></td><td>On Windows, system audio is captured natively via WASAPI Loopback without needing any third-party virtual drivers. Head tracking can also be broadcast to PC games via OpenTrack (port 4242) or VRChat via OSC (port 9000).</td></tr>
+
+</table>
+
+__________
+
+Powered by [ThePBone/XamlTranslationValidator](https://github.com/ThePBone/XamlTranslationValidator)
