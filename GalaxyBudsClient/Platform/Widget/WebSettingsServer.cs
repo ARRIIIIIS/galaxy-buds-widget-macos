@@ -32,6 +32,7 @@ public sealed class WebSettingsServer
     private static bool? _optimisticEqEnabled;
     private static bool? _optimisticEqCustom;
     private static int? _optimisticEqPreset;
+    private static int[]? _optimisticEqBands;
 
     private static readonly (string id, string label, string[] variants)[] SamsungModels =
     [
@@ -300,9 +301,10 @@ public sealed class WebSettingsServer
 
         if (isCustom)
         {
-            var finalBands = bands ?? BluetoothImpl.Instance.Device.Current?.CustomEqualizerBands ?? [0, 0, 0, 0, 0, 0, 0, 0, 0];
+            var finalBands = bands ?? _optimisticEqBands ?? BluetoothImpl.Instance.Device.Current?.CustomEqualizerBands ?? [0, 0, 0, 0, 0, 0, 0, 0, 0];
             if (finalBands.Length != 9)
                 finalBands = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+            _optimisticEqBands = finalBands;
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
@@ -511,7 +513,7 @@ public sealed class WebSettingsServer
                 w.WriteEndObject();
 
                 var eqCustomSupported = BluetoothImpl.Instance.DeviceSpec.Supports(Features.CustomEqualizer);
-                var eqBands = currentDev?.CustomEqualizerBands ?? [0, 0, 0, 0, 0, 0, 0, 0, 0];
+                var eqBands = _optimisticEqBands ?? currentDev?.CustomEqualizerBands ?? [0, 0, 0, 0, 0, 0, 0, 0, 0];
                 if (eqBands.Length != 9)
                     eqBands = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 
@@ -864,7 +866,22 @@ public sealed class WebSettingsServer
         <button id="eq4" onclick="setEqPreset(true,false,4)">高音</button>
         <button id="eqCustom" onclick="setEqPreset(true,true,0)">自定义</button>
       </div>
-      <div id="eqBandsWrap" style="display:flex;flex-direction:column;gap:6px;"></div>
+      <div id="eqBandsWrap" style="position:relative;background:var(--field);border:1px solid var(--border);padding:12px 10px 8px;user-select:none;touch-action:none;">
+        <svg id="eqSvg" viewBox="0 0 900 140" preserveAspectRatio="none" style="position:absolute;left:10px;right:10px;top:28px;width:calc(100% - 20px);height:140px;pointer-events:none;z-index:1;">
+          <defs>
+            <linearGradient id="eqFillGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#c1ff12" stop-opacity="0.28"/>
+              <stop offset="100%" stop-color="#c1ff12" stop-opacity="0.02"/>
+            </linearGradient>
+          </defs>
+          <line x1="0" y1="35" x2="900" y2="35" stroke="rgba(255,255,255,0.06)" stroke-dasharray="4 4"/>
+          <line x1="0" y1="70" x2="900" y2="70" stroke="rgba(255,255,255,0.16)" stroke-width="1"/>
+          <line x1="0" y1="105" x2="900" y2="105" stroke="rgba(255,255,255,0.06)" stroke-dasharray="4 4"/>
+          <path id="eqArea" d="" fill="url(#eqFillGrad)"/>
+          <path id="eqCurve" d="" fill="none" stroke="#c1ff12" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
+        <div id="eqCols" style="position:relative;z-index:2;display:grid;grid-template-columns:repeat(9,1fr);gap:6px;"></div>
+      </div>
     </div>
   </div>
 
@@ -934,22 +951,61 @@ function connectSelected() {
   post('/api/connect', { mac, model });
 }
 function setNoise(mode) { post('/api/noise', { mode }); }
-function setEqPreset(enabled, isCustom, preset) {
-  const bands = [];
+let localBands = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+let draggingEq = false;
+const PRESET_CURVES = {
+  off: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+  0: [6, 5, 3, 1, 0, 0, 0, 0, 0],
+  1: [0, 0, 0, 1, 2, 1, -1, -3, -4],
+  2: [5, 4, 1, 0, -1, 1, 3, 4, 4],
+  3: [-2, -1, 0, 2, 4, 4, 3, 2, 1],
+  4: [0, 0, 0, 0, 1, 3, 5, 6, 6]
+};
+
+function drawEqChart(bands, interactive) {
+  const pts = [];
   for (let i = 0; i < 9; i++) {
-    const el = document.getElementById('eqr' + i);
-    bands.push(el ? +el.value : 0);
+    const g = Math.max(-10, Math.min(10, bands[i] || 0));
+    const pct = (g + 10) / 20; // 0..1
+    const ySvg = 140 - pct * 140;
+    const xSvg = 50 + i * 100;
+    pts.push([xSvg, ySvg]);
+
+    const valEl = document.getElementById('eqv' + i);
+    const barEl = document.getElementById('eqb' + i);
+    const dotEl = document.getElementById('eqd' + i);
+    if (valEl) valEl.textContent = (g > 0 ? '+' : '') + g;
+    if (barEl) {
+      const hPct = Math.abs(g) / 20 * 100;
+      barEl.style.height = Math.max(2, hPct) + '%';
+      barEl.style.bottom = g >= 0 ? '50%' : (50 - hPct) + '%';
+      barEl.style.background = interactive
+        ? 'linear-gradient(to top, rgba(193,255,18,0.25), rgba(193,255,18,0.75))'
+        : 'rgba(193,255,18,0.35)';
+    }
+    if (dotEl) {
+      dotEl.style.bottom = `calc(${pct * 100}% - 5px)`;
+      dotEl.style.opacity = interactive ? '1' : '0.65';
+    }
   }
-  post('/api/equalizer', { enabled, isCustom, preset, bands });
+  let d = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const mx = (pts[i][0] + pts[i + 1][0]) / 2;
+    d += ` C ${mx} ${pts[i][1]}, ${mx} ${pts[i + 1][1]}, ${pts[i + 1][0]} ${pts[i + 1][1]}`;
+  }
+  document.getElementById('eqCurve').setAttribute('d', d);
+  document.getElementById('eqArea').setAttribute('d', `${d} L ${pts[8][0]} 140 L ${pts[0][0]} 140 Z`);
 }
-function pushCustomBands() { setEqPreset(true, true, 0); }
+
+function setEqPreset(enabled, isCustom, preset) {
+  post('/api/equalizer', { enabled, isCustom, preset, bands: localBands });
+}
+function pushCustomBands() {
+  post('/api/equalizer', { enabled: true, isCustom: true, preset: 0, bands: localBands });
+}
 function resetCustomEq() {
-  for (let i = 0; i < 9; i++) {
-    const r = document.getElementById('eqr' + i);
-    const v = document.getElementById('eqv' + i);
-    if (r) r.value = 0;
-    if (v) v.textContent = '0';
-  }
+  localBands = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  drawEqChart(localBands, true);
   pushCustomBands();
 }
 function toggleSeamless() { post('/api/seamless', { enabled: !state?.connectivity?.seamlessEnabled }); }
@@ -1053,28 +1109,56 @@ function render() {
     cBtn.disabled = !state.connected || !eq.customSupported;
     cBtn.className = (state.connected && eq.enabled && eq.isCustom) ? 'active' : '';
 
+    const cols = document.getElementById('eqCols');
     const wrap = document.getElementById('eqBandsWrap');
-    const freqs = ['63 Hz', '125 Hz', '250 Hz', '500 Hz', '1 kHz', '2 kHz', '4 kHz', '8 kHz', '16 kHz'];
-    if (!wrap.hasChildNodes()) {
+    const freqs = ['63', '125', '250', '500', '1k', '2k', '4k', '8k', '16k'];
+    if (!cols.hasChildNodes()) {
       for (let i = 0; i < 9; i++) {
-        const row = document.createElement('div');
-        row.style.cssText = 'display:grid;grid-template-columns:56px 1fr 44px;align-items:center;gap:10px;background:var(--field);border:1px solid var(--border);padding:6px 10px;';
-        row.innerHTML =
-          `<span style="font-family:var(--mono);font-size:10.5px;color:var(--text-2);text-align:left;">${freqs[i]}</span>` +
-          `<input id="eqr${i}" type="range" min="-10" max="10" step="1" value="0" style="width:100%;" oninput="document.getElementById('eqv'+${i}).textContent=(this.value>0?'+':'')+this.value+' dB'" onchange="pushCustomBands()" />` +
-          `<span id="eqv${i}" style="font-family:var(--mono);font-size:10.5px;color:var(--neon);text-align:right;">0 dB</span>`;
-        wrap.appendChild(row);
+        const col = document.createElement('div');
+        col.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;cursor:ns-resize;';
+        col.innerHTML =
+          `<span id="eqv${i}" style="font-family:var(--mono);font-size:10px;color:var(--neon);height:14px;">0</span>` +
+          `<div id="eqt${i}" style="position:relative;width:100%;height:140px;display:flex;justify-content:center;">` +
+            `<div id="eqb${i}" style="position:absolute;width:14px;background:rgba(193,255,18,0.4);border-radius:2px;transition:height .06s,bottom .06s;"></div>` +
+            `<div id="eqd${i}" style="position:absolute;width:10px;height:10px;border-radius:50%;background:var(--neon);box-shadow:0 0 8px rgba(193,255,18,0.8);left:50%;transform:translateX(-50%);bottom:calc(50% - 5px);"></div>` +
+          `</div>` +
+          `<span style="font-family:var(--mono);font-size:9.5px;color:var(--text-3);">${freqs[i]}</span>`;
+
+        const track = col.querySelector('#eqt' + i);
+        const setFromEvent = (ev) => {
+          const rect = track.getBoundingClientRect();
+          const rel = Math.max(0, Math.min(1, (ev.clientY - rect.top) / rect.height));
+          const val = Math.round(10 - rel * 20);
+          localBands[i] = val;
+          drawEqChart(localBands, true);
+        };
+        col.addEventListener('pointerdown', (ev) => {
+          if (!state?.connected || !state?.equalizer?.customSupported) return;
+          draggingEq = true;
+          col.setPointerCapture(ev.pointerId);
+          setFromEvent(ev);
+        });
+        col.addEventListener('pointermove', (ev) => {
+          if (!draggingEq) return;
+          setFromEvent(ev);
+        });
+        col.addEventListener('pointerup', () => {
+          if (!draggingEq) return;
+          draggingEq = false;
+          pushCustomBands();
+        });
+        cols.appendChild(col);
       }
     }
-    wrap.style.opacity = (state.connected && eq.customSupported) ? '1' : '0.4';
-    for (let i = 0; i < 9; i++) {
-      const r = document.getElementById('eqr' + i);
-      const v = document.getElementById('eqv' + i);
-      const g = (eq.bands && eq.bands[i]) || 0;
-      r.disabled = !state.connected || !eq.customSupported;
-      if (document.activeElement !== r) {
-        r.value = g;
-        v.textContent = (g > 0 ? '+' : '') + g + ' dB';
+    wrap.style.opacity = state.connected ? '1' : '0.4';
+    if (!draggingEq) {
+      if (eq.isCustom && eq.enabled) {
+        localBands = (eq.bands && eq.bands.length === 9) ? [...eq.bands] : [0,0,0,0,0,0,0,0,0];
+        drawEqChart(localBands, true);
+      } else if (eq.enabled) {
+        drawEqChart(PRESET_CURVES[eq.preset] || PRESET_CURVES.off, false);
+      } else {
+        drawEqChart(PRESET_CURVES.off, false);
       }
     }
   }
